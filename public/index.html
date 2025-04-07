@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Платформа для кулинарных мастер-классов</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 20px;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    .section {
+      margin-bottom: 40px;
+      background-color: #fff;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .item {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    form {
+      margin: 20px 0;
+    }
+    input, textarea, button {
+      padding: 8px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      cursor: pointer;
+    }
+    /* Стиль для чат-окна */
+    #chatbox {
+      width: 80%;
+      height: 300px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+      background-color: #fff;
+    }
+    #userMessage {
+      width: 70%;
+      padding: 8px;
+    }
+    #sendButton {
+      padding: 8px 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Платформа для кулинарных мастер-классов</h1>
+
+  <!-- Раздел: Рецепты -->
+  <div class="section" id="recipesSection">
+    <h2>Рецепты</h2>
+    <div id="recipesList"></div>
+    <h3>Добавить новый рецепт</h3>
+    <form id="recipeForm">
+      <input type="text" id="recipeTitle" placeholder="Название рецепта" required>
+      <textarea id="recipeDescription" placeholder="Описание рецепта" required></textarea>
+      <input type="text" id="recipeIngredients" placeholder="Ингредиенты (через запятую)" required>
+      <textarea id="recipeInstructions" placeholder="Инструкции по приготовлению" required></textarea>
+      <input type="number" id="recipeChefId" placeholder="ID кулинара" required>
+      <button type="submit">Добавить рецепт</button>
+    </form>
+  </div>
+
+  <!-- Раздел: Мастер-классы -->
+  <div class="section" id="classesSection">
+    <h2>Мастер-классы</h2>
+    <div id="classesList"></div>
+    <h3>Добавить мастер-класс</h3>
+    <form id="classForm">
+      <input type="number" id="classRecipeId" placeholder="ID рецепта" required>
+      <input type="number" id="classChefId" placeholder="ID кулинара" required>
+      <input type="datetime-local" id="classScheduledDate" required>
+      <input type="number" id="classDuration" placeholder="Длительность (мин)" required>
+      <input type="text" id="classLocation" placeholder="Место проведения" required>
+      <button type="submit">Добавить мастер-класс</button>
+    </form>
+  </div>
+
+  <!-- Раздел: Список покупок -->
+  <div class="section" id="grocerySection">
+    <h2>Генерация списка покупок</h2>
+    <form id="groceryForm">
+      <input type="number" id="groceryRecipeId" placeholder="Введите ID рецепта" required>
+      <button type="submit">Получить список покупок</button>
+    </form>
+    <div id="groceryList"></div>
+  </div>
+
+  <!-- Раздел: Рекомендации -->
+  <div class="section" id="recommendationsSection">
+    <h2>Рекомендации мастер-классов</h2>
+    <button id="fetchRecommendations">Получить рекомендации</button>
+    <div id="recommendationsList"></div>
+  </div>
+
+  <!-- Новый раздел: Чат с ботом -->
+  <div class="section" id="chatSection">
+    <h2>Чат с ботом</h2>
+    <div id="chatbox"></div>
+    <input type="text" id="userMessage" placeholder="Введите сообщение">
+    <button id="sendButton">Отправить</button>
+  </div>
+
+  <script>
+    const apiBase = 'http://localhost:3000/api';
+
+    // Функция для загрузки рецептов
+    async function loadRecipes() {
+      const response = await fetch(`${apiBase}/recipes`);
+      const recipes = await response.json();
+      const list = document.getElementById('recipesList');
+      list.innerHTML = '';
+      recipes.forEach(recipe => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<strong>${recipe.title}</strong><br>
+                         ${recipe.description}<br>
+                         <em>Ингредиенты:</em> ${recipe.ingredients}<br>
+                         <em>Инструкции:</em> ${recipe.instructions}`;
+        list.appendChild(div);
+      });
+    }
+
+    // Функция для загрузки мастер-классов
+    async function loadClasses() {
+      const response = await fetch(`${apiBase}/classes`);
+      const classes = await response.json();
+      const list = document.getElementById('classesList');
+      list.innerHTML = '';
+      classes.forEach(cls => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<strong>Мастер-класс по рецепту ID ${cls.recipe_id}</strong><br>
+                         Дата: ${new Date(cls.scheduled_date).toLocaleString()}<br>
+                         Длительность: ${cls.duration} мин<br>
+                         Место: ${cls.location}`;
+        list.appendChild(div);
+      });
+    }
+
+    // Добавление нового рецепта
+    document.getElementById('recipeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('recipeTitle').value;
+      const description = document.getElementById('recipeDescription').value;
+      const ingredients = document.getElementById('recipeIngredients').value;
+      const instructions = document.getElementById('recipeInstructions').value;
+      const chef_id = document.getElementById('recipeChefId').value;
+
+      await fetch(`${apiBase}/recipes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description, ingredients, instructions, chef_id })
+      });
+      document.getElementById('recipeForm').reset();
+      loadRecipes();
+    });
+
+    // Добавление нового мастер-класса
+    document.getElementById('classForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const recipe_id = document.getElementById('classRecipeId').value;
+      const chef_id = document.getElementById('classChefId').value;
+      const scheduled_date = document.getElementById('classScheduledDate').value;
+      const duration = document.getElementById('classDuration').value;
+      const location = document.getElementById('classLocation').value;
+
+      await fetch(`${apiBase}/classes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipe_id, chef_id, scheduled_date, duration, location })
+      });
+      document.getElementById('classForm').reset();
+      loadClasses();
+    });
+
+    // Генерация списка покупок
+    document.getElementById('groceryForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const recipe_id = document.getElementById('groceryRecipeId').value;
+      const response = await fetch(`${apiBase}/grocery-list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipe_id })
+      });
+      const data = await response.json();
+      const groceryDiv = document.getElementById('groceryList');
+      groceryDiv.innerHTML = `<strong>Список покупок:</strong><br>${data.groceryList.join(', ')}`;
+    });
+
+    // Получение рекомендаций мастер-классов
+    document.getElementById('fetchRecommendations').addEventListener('click', async () => {
+      const response = await fetch(`${apiBase}/recommendations`);
+      const data = await response.json();
+      const list = document.getElementById('recommendationsList');
+      list.innerHTML = '';
+      data.recommendations.forEach(rec => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<strong>Мастер-класс по рецепту ID ${rec.recipe_id}</strong><br>
+                         Дата: ${new Date(rec.scheduled_date).toLocaleString()}<br>
+                         Длительность: ${rec.duration} мин<br>
+                         Место: ${rec.location}`;
+        list.appendChild(div);
+      });
+    });
+
+    // Функция для отправки сообщений в чат-бот
+    async function sendChatMessage(message) {
+      const response = await fetch("/chatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+      const data = await response.json();
+      return data.response;
+    }
+
+    // Обработчик для отправки сообщения в чат
+    document.getElementById('sendButton').addEventListener('click', async () => {
+      const userInput = document.getElementById('userMessage');
+      const message = userInput.value;
+      if (!message.trim()) return;
+
+      const chatbox = document.getElementById('chatbox');
+      chatbox.innerHTML += `<p><strong>Вы:</strong> ${message}</p>`;
+
+      const answer = await sendChatMessage(message);
+      chatbox.innerHTML += `<p><strong>Бот:</strong> ${answer}</p>`;
+      chatbox.scrollTop = chatbox.scrollHeight; // Прокрутка до конца чата
+      userInput.value = ""; // Очищаем поле ввода
+    });
+
+    // Начальная загрузка данных
+    loadRecipes();
+    loadClasses();
+  </script>
+</body>
+</html>
